@@ -169,7 +169,7 @@ def process_single_image(file, filter_type, strength, size_multiplier, current_u
 # Web interface routes
 @app.route('/')
 def index():
-    return render_template('enhanced_index.html', token=session.get('token'), current_user=session.get('username'))
+    return render_template('index.html', token=session.get('token'), current_user=session.get('username'))
 
 @app.route('/web/login', methods=['POST'])
 def web_login():
@@ -177,7 +177,7 @@ def web_login():
     password = request.form.get('password')
     
     if not username or not password:
-        return render_template('enhanced_index.html', error="Username and password required")
+        return render_template('index.html', error="Username and password required")
     
     result = cognito_helper.authenticate(username, password)
     
@@ -187,7 +187,7 @@ def web_login():
             session['mfa_session'] = result['session']
             session['mfa_challenge'] = result['challenge']
             session['pending_username'] = username
-            return render_template('enhanced_index.html', 
+            return render_template('index.html', 
                                  mfa_required=True, 
                                  mfa_challenge=result['challenge'],
                                  message=result.get('message'))
@@ -206,9 +206,9 @@ def web_login():
             
         except Exception as e:
             logger.error(f"Token verification failed: {e}")
-            return render_template('enhanced_index.html', error="Authentication failed")
+            return render_template('index.html', error="Authentication failed")
     else:
-        return render_template('enhanced_index.html', error="Invalid credentials")
+        return render_template('index.html', error="Invalid credentials")
 
 @app.route('/web/mfa-verify', methods=['POST'])
 def web_mfa_verify():
@@ -218,7 +218,7 @@ def web_mfa_verify():
     challenge_name = session.get('mfa_challenge')
     
     if not all([username, mfa_code, mfa_session, challenge_name]):
-        return render_template('enhanced_index.html', error="MFA verification failed - missing data")
+        return render_template('index.html', error="MFA verification failed - missing data")
     
     result = cognito_helper.respond_to_mfa_challenge(username, mfa_code, mfa_session, challenge_name)
     
@@ -242,9 +242,9 @@ def web_mfa_verify():
             
         except Exception as e:
             logger.error(f"Token verification failed after MFA: {e}")
-            return render_template('enhanced_index.html', error="Authentication failed after MFA")
+            return render_template('index.html', error="Authentication failed after MFA")
     else:
-        return render_template('enhanced_index.html', 
+        return render_template('index.html', 
                              error="Invalid MFA code",
                              mfa_required=True,
                              mfa_challenge=challenge_name)
@@ -264,7 +264,7 @@ def web_logout():
 @cognito_jwt_required
 def web_test_endpoints():
     current_user = g.cognito_user.get('cognito:username', g.cognito_user.get('username'))
-    return render_template('enhanced_index.html', 
+    return render_template('index.html', 
                          token=session.get('token'),
                          current_user=current_user,
                          test_results={"message": "Ready to test endpoints"})
@@ -272,9 +272,9 @@ def web_test_endpoints():
 # API routes
 @app.route('/api/')
 def api_root():
-    return jsonify({"message": "Welcome to the Enhanced CAB432 API Server with MFA and User Groups"})
+    return jsonify({"message": "Welcome to the CAB432 API Server with MFA and User Groups"})
 
-# Enhanced Cognito authentication endpoints
+# Cognito authentication endpoints
 @app.route('/api/auth/signup', methods=['POST'])
 def api_signup():
     if not request.is_json:
@@ -588,10 +588,10 @@ def api_get_my_groups():
 @cognito_jwt_required
 @require_group(['Premium', 'Admins'])
 def api_premium_batch_process():
-    """Enhanced batch processing for Premium users"""
+    """Batch processing for Premium users"""
     current_user = g.cognito_user.get('cognito:username', g.cognito_user.get('username'))
     
-    # This could be enhanced batch processing with higher limits, priority processing, etc.
+    # This could be batch processing with higher limits, priority processing, etc.
     return jsonify({
         "message": "Premium batch processing initiated",
         "user": current_user,
