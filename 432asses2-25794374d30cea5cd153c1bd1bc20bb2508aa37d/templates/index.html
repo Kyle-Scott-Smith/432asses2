@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAB432 API Tester - Enhanced with MFA & Groups</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .mfa-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        
+        .user-groups {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .group-badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        
+        .group-badge.admin {
+            background: #dc3545;
+        }
+        
+        .group-badge.premium {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .admin-section {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        
+        .premium-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        
+        .totp-setup {
+            background: #e2e3e5;
+            border: 1px solid #d6d8db;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CAB432 API Testing Interface</h1>
+        <p><strong>Enhanced with MFA & User Groups</strong></p>
+        
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        {% if message %}
+        <div class="user-groups">{{ message }}</div>
+        {% endif %}
+        
+        {% if mfa_required %}
+        <div class="mfa-section">
+            <h2>Multi-Factor Authentication Required</h2>
+            <p>{{ message }}</p>
+            <form action="/web/mfa-verify" method="post">
+                <input type="text" name="mfa_code" placeholder="Enter MFA Code" required>
+                <button type="submit">Verify MFA Code</button>
+            </form>
+        </div>
+        {% endif %}
+        
+        {% if not current_user and not mfa_required %}
+        <div class="login-form">
+            <h2>Login</h2>
+            <form action="/web/login" method="post">
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            
+            <div class="signup-section" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+                <h3>New User? Sign Up</h3>
+                <form id="signupForm">
+                    <input type="text" id="signupUsername" placeholder="Username" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                    <input type="email" id="signupEmail" placeholder="Email" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                    <input type="password" id="signupPassword" placeholder="Password (8+ chars)" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                    <select id="signupGroup" style="width: 100%; padding: 8px; margin: 5px 0;">
+                        <option value="Users">Users (Default)</option>
+                        <option value="Premium">Premium</option>
+                    </select>
+                    <button type="button" onclick="signup()" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Sign Up
+                    </button>
+                </form>
+                <div id="signupResult" style="margin-top: 10px;"></div>
+            </div>
+
+            <div class="confirmation-section" id="confirmationSection" style="display: none; margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 4px;">
+                <h3>Confirm Your Email</h3>
+                <form id="confirmForm">
+                    <input type="text" id="confirmUsername" placeholder="Username" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                    <input type="text" id="confirmCode" placeholder="Confirmation Code" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                    <button type="button" onclick="confirmSignup()" style="width: 100%; padding: 10px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Confirm
+                    </button>
+                </form>
+                <div id="confirmResult" style="margin-top: 10px;"></div>
+            </div>
+            
+            <div class="demo-accounts">
+                <p><strong>Note:</strong> You need to create an account first using the signup form above.</p>
+                <p>Check your email for the confirmation code after signing up.</p>
+                <p><strong>User Groups:</strong></p>
+                <ul>
+                    <li><strong>Users:</strong> Basic image processing (max 5 batch, 2x size multiplier)</li>
+                    <li><strong>Premium:</strong> Enhanced processing (max 20 batch, 10x size multiplier, priority)</li>
+                    <li><strong>Admins:</strong> Full access (max 50 batch, 20x size multiplier, user management)</li>
+                </ul>
+            </div>
+        </div>
+        {% else %}
+        <div class="user-info">
+            <p>Logged in as: <strong>{{ current_user }}</strong></p>
+            {% if session.get('user_groups') %}
+            <div class="user-groups">
+                <strong>Your Groups:</strong>
+                {% for group in session.get('user_groups', []) %}
+                <span class="group-badge {% if group == 'Admins' %}admin{% elif group == 'Premium' %}premium{% endif %}">{{ group }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <a href="/web/logout" class="logout-btn">Logout</a>
+        </div>
+        
+        <div class="api-tester">
+            <h2>API Endpoint Tester</h2>
+            
+            <!-- User Info and Groups Section -->
+            <div class="endpoint">
+                <h3>1. User Information & Groups</h3>
+                <button onclick="testEndpoint('/api/auth/userinfo', 'GET')">Get User Info</button>
+                <button onclick="testEndpoint('/api/users/groups', 'GET')">Get My Groups</button>
+                <button onclick="testEndpoint('/api/protected', 'GET')">Test Protected Endpoint</button>
+                <div class="result" id="result-userinfo"></div>
+            </div>
+
+            <!-- MFA Setup Section -->
+            <div class="endpoint">
+                <h3>2. Multi-Factor Authentication Setup</h3>
+                <button onclick="setupTOTP()">Setup TOTP (Authenticator App)</button>
+                <div class="totp-setup" id="totpSetupSection" style="display: none;">
+                    <h4>TOTP Setup</h4>
+                    <div id="totpQRCode" class="qr-code"></div>
+                    <p>Scan the QR code with your authenticator app, then enter a code to verify:</p>
+                    <input type="text" id="totpVerifyCode" placeholder="Enter TOTP code" maxlength="6">
+                    <input type="hidden" id="totpSession">
+                    <button onclick="verifyTOTP()">Verify TOTP</button>
+                    <div id="totpResult"></div>
+                </div>
+                <div class="result" id="result-mfa"></div>
+            </div>
+
+            {% if 'Admins' in session.get('user_groups', []) %}
+            <!-- Admin Section -->
+            <div class="admin-section">
+                <h3>👑 Admin Functions</h3>
+                <div class="endpoint">
+                    <h4>User Group Management</h4>
+                    <form id="addUserToGroupForm">
+                        <input type="text" id="adminUsername" placeholder="Username" required>
+                        <select id="adminGroupName">
+                            <option value="Users">Users</option>
+                            <option value="Premium">Premium</option>
+                            <option value="Admins">Admins</option>
+                        </select>
+                        <button type="button" onclick="addUserToGroup()">Add User to Group</button>
+                        <button type="button" onclick="removeUserFromGroup()">Remove User from Group</button>
+                    </form>
+                    <button onclick="testEndpoint('/api/admin/groups', 'GET')">List All Groups</button>
+                    <div class="result" id="result-admin-groups"></div>
+                </div>
+                
+                <div class="endpoint">
+                    <h4>MFA Management</h4>
+                    <form id="adminMFAForm">
+                        <input type="text" id="mfaUsername" placeholder="Username" required>
+                        <select id="mfaType">
+                            <option value="SMS_MFA">SMS MFA</option>
+                            <option value="SOFTWARE_TOKEN_MFA">TOTP MFA</option>
+                        </select>
+                        <button type="button" onclick="enableUserMFA()">Enable MFA for User</button>
+                    </form>
+                    <div class="result" id="result-admin-mfa"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if 'Premium' in session.get('user_groups', []) or 'Admins' in session.get('user_groups', []) %}
+            <!-- Premium Section -->
+            <div class="premium-section">
+                <h3>⭐ Premium Features</h3>
+                <div class="endpoint">
+                    <button onclick="testEndpoint('/api/premium/batch-process-large', 'POST')">Premium Batch Processing</button>
+                    <div class="result" id="result-premium"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="endpoint">
+                <h3>3. Test Processing with Group Limits</h3>
+                <button onclick="testEndpoint('/api/process', 'POST')">Test Processing Speed</button>
+                <div class="result" id="result-process"></div>
+            </div>
+            
+            <div class="endpoint">
+                <h3>4. Test Image Filtering (Group-based Limits)</h3>
+                <form id="imageForm" enctype="multipart/form-data">
+                    <input type="file" id="imageInput" name="image" accept="image/*" required>
+                    <select id="filterSelect" name="filter">
+                        <option value="BLUR">Blur</option>
+                        <option value="CONTOUR">Contour</option>
+                        <option value="DETAIL">Detail</option>
+                        <option value="EDGE_ENHANCE">Edge Enhance</option>
+                        <option value="EMBOSS">Emboss</option>
+                        <option value="SHARPEN">Sharpen</option>
+                        <option value="SMOOTH">Smooth</option>
+                        <option value="EDGES">Find Edges</option>
+                    </select>
+                    <div>
+                        <label for="strengthSlider">Filter Strength:</label>
+                        <input type="range" id="strengthSlider" name="strength" min="1" max="500" value="100">
+                        <span id="strengthValue">100</span>
+                    </div>
+                    <div>
+                        <label for="sizeMultiplier">Size Multiplier:</label>
+                        <select id="sizeMultiplier" name="size_multiplier">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x (Original)</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x (Users limit)</option>
+                            {% if 'Premium' in session.get('user_groups', []) or 'Admins' in session.get('user_groups', []) %}
+                            <option value="3">3x</option>
+                            <option value="5">5x</option>
+                            <option value="10">10x (Premium limit)</option>
+                            {% endif %}
+                            {% if 'Admins' in session.get('user_groups', []) %}
+                            <option value="15">15x</option>
+                            <option value="20">20x (Admin limit)</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <button type="button" onclick="testImageFilter()">Test Image Filter</button>
+                </form>
+                <div class="result" id="result-image">
+                    <div id="imagePreview"></div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>5. Batch Image Filtering (Group-based Batch Limits)</h3>
+                <p><strong>Your batch limit:</strong> 
+                {% if 'Admins' in session.get('user_groups', []) %}
+                50 images
+                {% elif 'Premium' in session.get('user_groups', []) %}
+                20 images
+                {% else %}
+                5 images
+                {% endif %}
+                </p>
+                <form id="batchImageForm" enctype="multipart/form-data">
+                    <div style="margin-bottom: 15px;">
+                        <label for="batchImageInput" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                            Select multiple images (hold Ctrl/Cmd to select multiple):
+                        </label>
+                        <div style="position: relative; display: inline-block; width: 100%;">
+                            <input type="file" id="batchImageInput" name="images" accept="image/*" multiple 
+                                style="position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;">
+                            <button type="button" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Choose Files
+                            </button>
+                        </div>
+                        <div id="fileCount" style="margin-top: 5px; font-size: 14px; color: #666;"></div>
+                    </div>
+                    
+                    <select id="batchFilterSelect" name="filter" style="margin-bottom: 15px; display: block; width: 100%; padding: 8px;">
+                        <option value="BLUR">Blur</option>
+                        <option value="CONTOUR">Contour</option>
+                        <option value="DETAIL">Detail</option>
+                        <option value="EDGE_ENHANCE">Edge Enhance</option>
+                        <option value="EMBOSS">Emboss</option>
+                        <option value="SHARPEN">Sharpen</option>
+                        <option value="SMOOTH">Smooth</option>
+                        <option value="EDGES">Find Edges</option>
+                    </select>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="batchStrengthSlider" style="display: block; margin-bottom: 5px;">
+                            Filter Strength: <span id="batchStrengthValue">100</span>
+                        </label>
+                        <input type="range" id="batchStrengthSlider" name="strength" min="1" max="500" value="100" style="width: 100%;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="batchSizeMultiplier" style="display: block; margin-bottom: 5px;">Size Multiplier:</label>
+                        <select id="batchSizeMultiplier" name="size_multiplier" style="width: 100%; padding: 8px;">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x (Original)</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" onclick="testBatchImageFilter()" style="padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                        Process All Images
+                    </button>
+                </form>
+                
+                <div class="result" id="result-batch-image">
+                    <div id="batchImagePreview"></div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>6. View My Previous Images</h3>
+                <button onclick="loadMyImages()">Load My Images</button>
+                <div class="result" id="result-my-images"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+
+    <script>
+        // Update strength value display
+        document.getElementById('strengthSlider').addEventListener('input', function() {
+            document.getElementById('strengthValue').textContent = this.value;
+        });
+        
+        document.getElementById('batchStrengthSlider').addEventListener('input', function() {
+            document.getElementById('batchStrengthValue').textContent = this.value;
+        });
+
+        // File count display for batch upload
+        document.getElementById('batchImageInput').addEventListener('change', function() {
+            const fileCount = this.files.length;
+            document.getElementById('fileCount').textContent = `${fileCount} file(s) selected`;
+        });
+        
+        function testEndpoint(endpoint, method, data = null) {
+            const endpointName = endpoint.split('/').pop() || 'root';
+            const resultDiv = document.getElementById(`result-${endpointName}`) || 
+                             document.getElementById(`result-${endpoint.split('/')[2] || 'root'}`);
+            
+            if (!resultDiv) {
+                console.error('Result div not found for endpoint:', endpoint);
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Testing...';
+            
+            const token = '{{ token }}';
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+            
+            const options = {
+                method: method,
+                headers: headers
+            };
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            fetch(endpoint, options)
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        // Signup function
+        function signup() {
+            const username = document.getElementById('signupUsername').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const userGroup = document.getElementById('signupGroup').value;
+            const resultDiv = document.getElementById('signupResult');
+            
+            if (!username || !email || !password) {
+                resultDiv.innerHTML = 'Please fill all fields';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Signing up...';
+            
+            fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password,
+                    user_group: userGroup
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.msg) {
+                    resultDiv.innerHTML = `Error: ${data.msg}`;
+                } else {
+                    resultDiv.innerHTML = `Success! ${data.message}<br>Group: ${data.user_group}`;
+                    // Show confirmation section
+                    document.getElementById('confirmUsername').value = username;
+                    document.getElementById('confirmationSection').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        // Confirm signup function
+        function confirmSignup() {
+            const username = document.getElementById('confirmUsername').value;
+            const code = document.getElementById('confirmCode').value;
+            const resultDiv = document.getElementById('confirmResult');
+            
+            if (!username || !code) {
+                resultDiv.innerHTML = 'Please fill all fields';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Confirming...';
+            
+            fetch('/api/auth/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    confirmation_code: code
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.msg) {
+                    resultDiv.innerHTML = `Error: ${data.msg}`;
+                } else {
+                    resultDiv.innerHTML = 'Success! Your account is confirmed. You can now login.';
+                    // Reload page after 2 seconds to show login form
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        // TOTP Setup Functions
+        function setupTOTP() {
+            const resultDiv = document.getElementById('result-mfa');
+            resultDiv.innerHTML = 'Setting up TOTP...';
+            
+            const token = '{{ token }}';
+            
+            fetch('/api/auth/setup-totp', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.msg) {
+                    resultDiv.innerHTML = `Error: ${data.msg}`;
+                } else {
+                    resultDiv.innerHTML = 'TOTP setup initiated. Scan QR code below.';
+                    document.getElementById('totpSetupSection').style.display = 'block';
+                    document.getElementById('totpSession').value = data.session;
+                    
+                    // Display QR code (you might want to use a QR code library here)
+                    document.getElementById('totpQRCode').innerHTML = `
+                        <p><strong>Secret Code:</strong> ${data.secret_code}</p>
+                        <p><strong>Manual Entry URL:</strong></p>
+                        <code style="word-break: break-all;">${data.qr_code_data}</code>
+                        <p><em>Use this URL in your authenticator app if you can't scan QR codes</em></p>
+                    `;
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        function verifyTOTP() {
+            const code = document.getElementById('totpVerifyCode').value;
+            const session = document.getElementById('totpSession').value;
+            const resultDiv = document.getElementById('totpResult');
+            
+            if (!code || !session) {
+                resultDiv.innerHTML = 'Please enter TOTP code';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Verifying...';
+            
+            const token = '{{ token }}';
+            
+            fetch('/api/auth/verify-totp-setup', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_code: code,
+                    session: session
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.msg) {
+                    resultDiv.innerHTML = `Error: ${data.msg}`;
+                } else {
+                    resultDiv.innerHTML = `Success! TOTP verified. Status: ${data.status}`;
+                    document.getElementById('totpSetupSection').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        // Admin Functions
+        function addUserToGroup() {
+            const username = document.getElementById('adminUsername').value;
+            const groupName = document.getElementById('adminGroupName').value;
+            const resultDiv = document.getElementById('result-admin-groups');
+            
+            if (!username) {
+                resultDiv.innerHTML = 'Please enter username';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Adding user to group...';
+            
+            const token = '{{ token }}';
+            
+            fetch(`/api/admin/users/${username}/groups`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    group_name: groupName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        function removeUserFromGroup() {
+            const username = document.getElementById('adminUsername').value;
+            const groupName = document.getElementById('adminGroupName').value;
+            const resultDiv = document.getElementById('result-admin-groups');
+            
+            if (!username) {
+                resultDiv.innerHTML = 'Please enter username';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Removing user from group...';
+            
+            const token = '{{ token }}';
+            
+            fetch(`/api/admin/users/${username}/groups/${groupName}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        function enableUserMFA() {
+            const username = document.getElementById('mfaUsername').value;
+            const mfaType = document.getElementById('mfaType').value;
+            const resultDiv = document.getElementById('result-admin-mfa');
+            
+            if (!username) {
+                resultDiv.innerHTML = 'Please enter username';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Enabling MFA...';
+            
+            const token = '{{ token }}';
+            
+            fetch(`/api/admin/users/${username}/mfa`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    mfa_type: mfaType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        function testImageFilter() {
+            const resultDiv = document.getElementById('result-image');
+            resultDiv.innerHTML = 'Testing...';
+            
+            const fileInput = document.getElementById('imageInput');
+            const filterSelect = document.getElementById('filterSelect');
+            const strengthSlider = document.getElementById('strengthSlider');
+            const sizeMultiplier = document.getElementById('sizeMultiplier');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.innerHTML = 'Please select an image file first.';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('filter', filterSelect.value);
+            formData.append('strength', strengthSlider.value);
+            formData.append('size_multiplier', sizeMultiplier.value);
+            
+            const token = '{{ token }}';
+            
+            fetch('/api/filter-image', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultDiv.innerHTML = `Error: ${data.error}`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <pre>${JSON.stringify(
+                            {
+                                message: data.message, 
+                                user: data.user, 
+                                user_groups: data.user_groups,
+                                filter: data.filter, 
+                                strength: data.strength, 
+                                size_multiplier: data.size_multiplier, 
+                                image_id: data.image_id
+                            },
+                            null,
+                            2
+                        )}</pre>
+                        <div id="imagePreview"></div>
+                    `;
+                    
+                    const imagePreview = document.getElementById('imagePreview');
+                    
+                    if (data.image_url) {
+                        const imgContainer = document.createElement('div');
+
+                        const img = document.createElement('img');
+                        img.src = data.image_url;
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '300px';
+                        img.style.marginTop = '10px';
+                        img.style.border = '1px solid #ddd';
+                        img.style.borderRadius = '4px';
+                        img.onerror = function() {
+                            this.style.display = 'none';
+                            const errorMsg = document.createElement('p');
+                            errorMsg.textContent = 'Failed to load image from S3. The URL may have expired.';
+                            errorMsg.style.color = 'red';
+                            imgContainer.appendChild(errorMsg);
+                        };
+                        imgContainer.appendChild(img);
+
+                        // Create download button
+                        const downloadBtn = document.createElement('button');
+                        downloadBtn.textContent = 'Download Filtered Image';
+                        downloadBtn.style.marginTop = '10px';
+                        downloadBtn.onclick = function() {
+                            downloadFilteredImage(data.image_id);
+                        };
+                        imgContainer.appendChild(downloadBtn);
+
+                        imagePreview.appendChild(imgContainer);
+                    }
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+        
+        function testBatchImageFilter() {
+            const resultDiv = document.getElementById('result-batch-image');
+            resultDiv.innerHTML = 'Processing...';
+            
+            const fileInput = document.getElementById('batchImageInput');
+            const filterSelect = document.getElementById('batchFilterSelect');
+            const strengthSlider = document.getElementById('batchStrengthSlider');
+            const sizeMultiplier = document.getElementById('batchSizeMultiplier');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.innerHTML = 'Please select at least one image file first.';
+                return;
+            }
+            
+            const formData = new FormData();
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('images', fileInput.files[i]);
+            }
+            formData.append('filter', filterSelect.value);
+            formData.append('strength', strengthSlider.value);
+            formData.append('size_multiplier', sizeMultiplier.value);
+            
+            const token = '{{ token }}';
+            
+            fetch('/api/batch-filter-images', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultDiv.innerHTML = `Error: ${data.error}`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <pre>${JSON.stringify(
+                            {
+                                user: data.user, 
+                                user_groups: data.user_groups,
+                                max_batch_size: data.max_batch_size,
+                                max_workers: data.max_workers,
+                                processed_count: data.processed_count, 
+                                error_count: data.error_count
+                            },
+                            null,
+                            2
+                        )}</pre>
+                        <div id="batchResults"></div>
+                    `;
+                    
+                    const batchResults = document.getElementById('batchResults');
+                    
+                    data.results.forEach(result => {
+                        const container = document.createElement('div');
+                        container.className = 'batch-image-container';
+                        
+                        if (result.error) {
+                            container.innerHTML = `
+                                <p><strong>${result.filename}</strong>: ${result.error}</p>
+                            `;
+                        } else {
+                            container.innerHTML = `
+                                <p><strong>${result.filename}</strong></p>
+                                <img src="${result.image_url}" alt="Filtered ${result.filename}" style="max-width: 200px;">
+                                <br>
+                                <button onclick="downloadFilteredImage('${result.image_id}')">Download</button>
+                            `;
+                        }
+                        
+                        batchResults.appendChild(container);
+                    });
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+        
+        function downloadFilteredImage(imageId) {
+            const token = '{{ token }}';
+            const link = document.createElement('a');
+            link.href = `/api/download-image/${imageId}?token=${token}`;
+            link.download = 'filtered-image.jpg';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function loadMyImages() {
+            const resultDiv = document.getElementById('result-my-images');
+            resultDiv.innerHTML = 'Loading...';
+
+            const token = '{{ token }}';
+            
+            fetch('/api/my-images', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    return response.text().then(text => {
+                        throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.length === 0) {
+                    resultDiv.innerHTML = 'No images found.';
+                    return;
+                }
+                resultDiv.innerHTML = '';
+                data.forEach(imgObj => {
+                    const container = document.createElement('div');
+                    container.style.marginBottom = '20px';
+
+                    const info = document.createElement('pre');
+                    info.textContent = JSON.stringify({
+                        filter: imgObj.filter,
+                        strength: imgObj.strength,
+                        size_multiplier: imgObj.size_multiplier,
+                        image_id: imgObj.image_id
+                    }, null, 2);
+                    container.appendChild(info);
+
+                    const img = document.createElement('img');
+                    img.src = imgObj.image_url;
+                    img.style.maxWidth = '200px';
+                    img.style.display = 'block';
+                    img.onerror = function() {
+                        this.style.display = 'none';
+                        const errorMsg = document.createElement('p');
+                        errorMsg.textContent = 'Failed to load image. URL may have expired.';
+                        errorMsg.style.color = 'red';
+                        container.appendChild(errorMsg);
+                    };
+                    container.appendChild(img);
+
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download';
+                    downloadBtn.onclick = () => downloadFilteredImage(imgObj.image_id);
+                    container.appendChild(downloadBtn);
+
+                    resultDiv.appendChild(container);
+                });
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+                console.error('Full error:', error);
+            });
+        }
+    </script>
+</body>
+</html>   

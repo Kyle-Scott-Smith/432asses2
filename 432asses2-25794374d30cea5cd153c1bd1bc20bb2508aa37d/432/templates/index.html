@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAB432 API Tester</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>CAB432 API Testing Interface</h1>
+        
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        {% if not current_user %}
+        <div class="login-form">
+            <h2>Login</h2>
+            <form action="/web/login" method="post">
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            <div class="demo-accounts">
+                <p><strong>Demo Accounts:</strong></p>
+                <p>user1 / password1</p>
+                <p>admin1 / adminpass</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="user-info">
+            <p>Logged in as: <strong>{{ current_user }}</strong></p>
+            <a href="/web/logout" class="logout-btn">Logout</a>
+        </div>
+        
+        <div class="api-tester">
+            <h2>API Endpoint Tester</h2>
+<!--             
+            <div class="endpoint">
+                <h3>1. Test Root Endpoint</h3>
+                <button onclick="testEndpoint('/api/', 'GET')">Test /api/</button>
+                <div class="result" id="result-root"></div>
+            </div>
+            
+            <div class="endpoint">
+                <h3>2. Test Protected Endpoint</h3>
+                <button onclick="testEndpoint('/api/protected', 'GET')">Test /api/protected</button>
+                <div class="result" id="result-protected"></div>
+            </div>
+            
+            <div class="endpoint">
+                <h3>3. Test Process Endpoint</h3>
+                <button onclick="testEndpoint('/api/process', 'POST')">Test /api/process</button>
+                <div class="result" id="result-process"></div>
+            </div> -->
+            
+            <div class="endpoint">
+                <h3>4. Test Image Filtering</h3>
+                <form id="imageForm" enctype="multipart/form-data">
+                    <input type="file" id="imageInput" name="image" accept="image/*" required>
+                    <select id="filterSelect" name="filter">
+                        <option value="BLUR">Blur</option>
+                        <option value="CONTOUR">Contour</option>
+                        <option value="DETAIL">Detail</option>
+                        <option value="EDGE_ENHANCE">Edge Enhance</option>
+                        <option value="EMBOSS">Emboss</option>
+                        <option value="SHARPEN">Sharpen</option>
+                        <option value="SMOOTH">Smooth</option>
+                        <option value="EDGES">Find Edges</option>
+                    </select>
+                    <div>
+                        <label for="strengthSlider">Filter Strength:</label>
+                        <input type="range" id="strengthSlider" name="strength" min="1" max="500" value="100">
+                        <span id="strengthValue">100</span>
+                    </div>
+                    <div>
+                        <label for="sizeMultiplier">Size Multiplier:</label>
+                        <select id="sizeMultiplier" name="size_multiplier">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x (Original)</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                            <option value="20">20x</option>
+                        </select>
+                    </div>
+                    <button type="button" onclick="testImageFilter()">Test Image Filter</button>
+                </form>
+                <div class="result" id="result-image">
+                    <div id="imagePreview"></div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>5. Batch Image Filtering (Multiple Images)</h3>
+                <form id="batchImageForm" enctype="multipart/form-data">
+                    <div style="margin-bottom: 15px;">
+                        <label for="batchImageInput" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                            Select multiple images (hold Ctrl/Cmd to select multiple):
+                        </label>
+                        <div style="position: relative; display: inline-block; width: 100%;">
+                            <input type="file" id="batchImageInput" name="images" accept="image/*" multiple 
+                                style="position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;">
+                            <button type="button" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Choose Files
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <select id="batchFilterSelect" name="filter" style="margin-bottom: 15px; display: block; width: 100%; padding: 8px;">
+                        <option value="BLUR">Blur</option>
+                        <option value="CONTOUR">Contour</option>
+                        <option value="DETAIL">Detail</option>
+                        <option value="EDGE_ENHANCE">Edge Enhance</option>
+                        <option value="EMBOSS">Emboss</option>
+                        <option value="SHARPEN">Sharpen</option>
+                        <option value="SMOOTH">Smooth</option>
+                        <option value="EDGES">Find Edges</option>
+                    </select>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="batchStrengthSlider" style="display: block; margin-bottom: 5px;">
+                            Filter Strength: <span id="batchStrengthValue">100</span>
+                        </label>
+                        <input type="range" id="batchStrengthSlider" name="strength" min="1" max="500" value="100" style="width: 100%;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="batchSizeMultiplier" style="display: block; margin-bottom: 5px;">Size Multiplier:</label>
+                        <select id="batchSizeMultiplier" name="size_multiplier" style="width: 100%; padding: 8px;">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x (Original)</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                            <option value="20">20x</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" onclick="testBatchImageFilter()" style="padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                        Process All Images
+                    </button>
+                </form>
+                
+                <div class="result" id="result-batch-image">
+                    <div id="batchImagePreview"></div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>6. View My Previous Images</h3>
+                <button onclick="loadMyImages()">Load My Images</button>
+                <div class="result" id="result-my-images"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+
+    <script>
+        // Update strength value display
+        document.getElementById('strengthSlider').addEventListener('input', function() {
+            document.getElementById('strengthValue').textContent = this.value;
+        });
+        
+        document.getElementById('batchStrengthSlider').addEventListener('input', function() {
+            document.getElementById('batchStrengthValue').textContent = this.value;
+        });
+        
+        function testEndpoint(endpoint, method) {
+            const resultDiv = document.getElementById(`result-${endpoint.split('/')[2] || 'root'}`);
+            resultDiv.innerHTML = 'Testing...';
+            
+            const token = '{{ token }}';
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+            
+            fetch(endpoint, {
+                method: method,
+                headers: headers
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+        
+        function testImageFilter() {
+            const resultDiv = document.getElementById('result-image');
+            resultDiv.innerHTML = 'Testing...';
+            
+            const fileInput = document.getElementById('imageInput');
+            const filterSelect = document.getElementById('filterSelect');
+            const strengthSlider = document.getElementById('strengthSlider');
+            const sizeMultiplier = document.getElementById('sizeMultiplier');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.innerHTML = 'Please select an image file first.';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('filter', filterSelect.value);
+            formData.append('strength', strengthSlider.value);
+            formData.append('size_multiplier', sizeMultiplier.value);
+            
+            const token = '{{ token }}';
+            
+            fetch('/api/filter-image', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultDiv.innerHTML = `Error: ${data.error}`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <pre>${JSON.stringify(
+                            {message: data.message, user: data.user, filter: data.filter, 
+                             strength: data.strength, size_multiplier: data.size_multiplier, 
+                             image_id: data.image_id},
+                            null,
+                            2
+                        )}</pre>
+                        <div id="imagePreview"></div>
+                    `;
+                    
+                    const imagePreview = document.getElementById('imagePreview');
+                    
+                    if (data.image) {
+                        const imgContainer = document.createElement('div');
+
+                        const img = document.createElement('img');
+                        img.src = data.image;
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '300px';
+                        img.style.marginTop = '10px';
+                        img.style.border = '1px solid #ddd';
+                        img.style.borderRadius = '4px';
+                        imgContainer.appendChild(img);
+
+                        const downloadBtn = document.createElement('button');
+                        downloadBtn.textContent = 'Download Filtered Image';
+                        downloadBtn.style.marginTop = '10px';
+                        downloadBtn.onclick = function() {
+                            downloadFilteredImage(data.image_id);
+                        };
+                        imgContainer.appendChild(downloadBtn);
+
+                        imagePreview.appendChild(imgContainer);
+                    }
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+        
+        function testBatchImageFilter() {
+            const resultDiv = document.getElementById('result-batch-image');
+            resultDiv.innerHTML = 'Processing...';
+            
+            const fileInput = document.getElementById('batchImageInput');
+            const filterSelect = document.getElementById('batchFilterSelect');
+            const strengthSlider = document.getElementById('batchStrengthSlider');
+            const sizeMultiplier = document.getElementById('batchSizeMultiplier');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.innerHTML = 'Please select at least one image file first.';
+                return;
+            }
+            
+            const formData = new FormData();
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('images', fileInput.files[i]);
+            }
+            formData.append('filter', filterSelect.value);
+            formData.append('strength', strengthSlider.value);
+            formData.append('size_multiplier', sizeMultiplier.value);
+            
+            const token = '{{ token }}';
+            
+            // Create progress bar
+            resultDiv.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress" id="batchProgress"></div>
+                </div>
+                <div id="batchStatus">Processing 0/${fileInput.files.length} images...</div>
+                <div id="batchResults"></div>
+            `;
+            
+            const progressBar = document.getElementById('batchProgress');
+            const statusDiv = document.getElementById('batchStatus');
+            const resultsDiv = document.getElementById('batchResults');
+            
+            fetch('/api/batch-filter-images', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultsDiv.innerHTML = `
+                    <pre>${JSON.stringify(
+                        {user: data.user, processed_count: data.processed_count, error_count: data.error_count},
+                        null,
+                        2
+                    )}</pre>
+                `;
+                
+                data.results.forEach(result => {
+                    const container = document.createElement('div');
+                    container.className = 'batch-image-container';
+                    
+                    if (result.error) {
+                        container.innerHTML = `
+                            <p><strong>${result.filename}</strong>: ${result.error}</p>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <p><strong>${result.filename}</strong></p>
+                            <img src="${result.image}" alt="Filtered ${result.filename}">
+                            <button onclick="downloadFilteredImage('${result.image_id}')">Download</button>
+                        `;
+                    }
+                    
+                    resultsDiv.appendChild(container);
+                });
+                
+                // Update progress to 100%
+                progressBar.style.width = '100%';
+                statusDiv.textContent = `Processing complete! Processed ${data.processed_count} images, ${data.error_count} errors.`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+            
+            // Simulate progress updates (since we can't get real progress from fetch)
+            let processed = 0;
+            const total = fileInput.files.length;
+            const progressInterval = setInterval(() => {
+                if (processed < total) {
+                    processed++;
+                    const progress = (processed / total) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    statusDiv.textContent = `Processing ${processed}/${total} images...`;
+                } else {
+                    clearInterval(progressInterval);
+                }
+            }, 500);
+        }
+        
+        function downloadFilteredImage(imageId) {
+            const token = '{{ token }}';
+            const link = document.createElement('a');
+            link.href = `/api/download-image/${imageId}?token=${token}`;
+            link.download = 'filtered-image.jpg';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function loadMyImages() {
+            const resultDiv = document.getElementById('result-my-images');
+            resultDiv.innerHTML = 'Loading...';
+
+            const token = '{{ token }}';
+            fetch('/api/my-images', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    resultDiv.innerHTML = 'No images found.';
+                    return;
+                }
+                resultDiv.innerHTML = '';
+                data.forEach(imgObj => {
+                    const container = document.createElement('div');
+                    container.style.marginBottom = '20px';
+
+                    const info = document.createElement('pre');
+                    info.textContent = JSON.stringify({
+                        filter: imgObj.filter,
+                        strength: imgObj.strength,
+                        size_multiplier: imgObj.size_multiplier,
+                        image_id: imgObj.image_id
+                    }, null, 2);
+                    container.appendChild(info);
+
+                    const img = document.createElement('img');
+                    img.src = imgObj.image;
+                    img.style.maxWidth = '200px';
+                    img.style.display = 'block';
+                    container.appendChild(img);
+
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download';
+                    downloadBtn.onclick = () => downloadFilteredImage(imgObj.image_id);
+                    container.appendChild(downloadBtn);
+
+                    resultDiv.appendChild(container);
+                });
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `Error: ${error}`;
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}
+
+.login-form {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.login-form button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.login-form button:hover {
+    background-color: #0056b3;
+}
+
+.demo-accounts {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+.user-info {
+    background-color: #e9ecef;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.logout-btn {
+    color: #dc3545;
+    text-decoration: none;
+}
+
+.logout-btn:hover {
+    text-decoration: underline;
+}
+
+.endpoint {
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.endpoint button {
+    padding: 8px 16px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.endpoint button:hover {
+    background-color: #218838;
+}
+
+.endpoint input, .endpoint select {
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.endpoint label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.endpoint input[type="range"] {
+    width: 100%;
+    max-width: 300px;
+}
+
+.result {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    min-height: 50px;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.error {
+    color: #dc3545;
+    padding: 10px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+#imagePreview img, #batchImagePreview img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.batch-image-container {
+    display: inline-block;
+    margin: 10px;
+    vertical-align: top;
+    max-width: 300px;
+}
+
+.batch-image-container img {
+    max-width: 100%;
+    max-height: 200px;
+}
+
+.progress-bar {
+    width: 100%;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.progress {
+    height: 20px;
+    background-color: #4caf50;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s;
+}
