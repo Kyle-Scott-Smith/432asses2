@@ -253,6 +253,7 @@ def web_mfa_verify():
 @app.route('/web/logout')
 def web_logout():
     session.pop('token', None)
+    session.pop('access_token', None)
     session.pop('cognito_token', None)
     session.pop('username', None)
     session.pop('user_groups', None)

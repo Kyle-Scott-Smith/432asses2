@@ -369,10 +369,13 @@
             
             resultDiv.innerHTML = 'Testing...';
             
-            const token = '{{ session.get("access_token") }}';
+            const accessToken = '{{ session.get("access_token") }}';
+            const idToken = '{{ token }}';
+            const token = (endpoint.includes('/userinfo') || endpoint.includes('/setup-totp')) ? accessToken : idToken;
+            
             const headers = {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
+                'Authorization': `Bearer ${token}`
             };
             
             const options = {
@@ -526,12 +529,12 @@
             
             resultDiv.innerHTML = 'Verifying...';
             
-            const token = '{{ token }}';
+            const accessToken = '{{ session.get("access_token") }}';
             
             fetch('/api/auth/verify-totp-setup', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({

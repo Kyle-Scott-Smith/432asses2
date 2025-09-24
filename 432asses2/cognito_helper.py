@@ -61,41 +61,7 @@ class CognitoHelper:
                 raise
         return self.jwks
 
-    def _ensure_default_groups(self):
-        """Create default user groups if they don't exist"""
-        default_groups = [
-            {
-                'GroupName': 'Users',
-                'Description': 'Default group for regular users',
-                'Precedence': 3
-            },
-            {
-                'GroupName': 'Premium',
-                'Description': 'Premium users with enhanced features',
-                'Precedence': 2
-            },
-            {
-                'GroupName': 'Admins',
-                'Description': 'Administrative users with additional permissions',
-                'Precedence': 1
-            }
-        ]
-        
-        for group in default_groups:
-            try:
-                self.cognito_client.create_group(
-                    GroupName=group['GroupName'],
-                    UserPoolId=self.user_pool_id,
-                    Description=group['Description'],
-                    Precedence=group['Precedence']
-                )
-                logger.info(f"Created group: {group['GroupName']}")
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'GroupExistsException':
-                    logger.info(f"Group {group['GroupName']} already exists")
-                else:
-                    logger.warning(f"Could not create group {group['GroupName']}: {e}")
-                    # Don't raise exception - groups might already exist or permissions might be limited
+
 
     def sign_up(self, username, password, email, user_group='Users'):
         """Register a new user and optionally add to a group"""
