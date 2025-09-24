@@ -414,15 +414,17 @@ def api_setup_totp():
         return jsonify({"msg": "Missing access token"}), 401
     
     access_token = auth_header[7:]
-    
+    username = cognito_helper.get_user_info(access_token)
+    cognito_helper.enable_mfa_for_user(username)
     result = cognito_helper.associate_software_token(access_token=access_token)
     
     if result['success']:
+        session_token = result['session_token'] or access_token
         return jsonify({
             "message": "TOTP setup initiated",
             "secret_code": result['secret_code'],
             "qr_code_data": result['qr_code_data'],
-            "session_token": result['session_token']
+            "session_token": session_token
         }), 200
     else:
         return jsonify({

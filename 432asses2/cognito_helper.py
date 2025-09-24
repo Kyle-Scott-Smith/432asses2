@@ -161,14 +161,7 @@ class CognitoHelper:
                 challenge_name = response['ChallengeName']
                 session = response['Session']
                 
-                if challenge_name == 'SMS_MFA':
-                    return {
-                        'success': True,
-                        'challenge': 'SMS_MFA',
-                        'session': session,
-                        'message': 'SMS MFA code sent. Please verify with the code.'
-                    }
-                elif challenge_name == 'SOFTWARE_TOKEN_MFA':
+                if challenge_name == 'SOFTWARE_TOKEN_MFA':
                     return {
                         'success': True,
                         'challenge': 'SOFTWARE_TOKEN_MFA',
@@ -202,12 +195,12 @@ class CognitoHelper:
                 'error_message': error_message
             }
 
-    def respond_to_mfa_challenge(self, username, mfa_code, session, challenge_name='SMS_MFA'):
+    def respond_to_mfa_challenge(self, username, mfa_code, session, challenge_name='SOFTWARE_TOKEN_MFA'):
         """Respond to MFA challenge with verification code"""
         try:
             challenge_responses = {
                 'USERNAME': username,
-                'SMS_MFA_CODE' if challenge_name == 'SMS_MFA' else 'SOFTWARE_TOKEN_MFA_CODE': mfa_code
+                'SOFTWARE_TOKEN_MFA_CODE': mfa_code
             }
             
             if self.client_secret:
@@ -241,48 +234,24 @@ class CognitoHelper:
                 'error_message': error_message
             }
 
-    def enable_mfa_for_user(self, username, mfa_type='SMS_MFA'):
-        """Enable MFA for a user (admin function)"""
+    def enable_mfa_for_user(self, username):
+        """Enable SOFTWARE_TOKEN_MFA for a user (admin function)"""
         try:
-            if mfa_type == 'SMS_MFA':
-                # Set user's phone number as verified (required for SMS MFA)
-                self.cognito_client.admin_update_user_attributes(
-                    UserPoolId=self.user_pool_id,
-                    Username=username,
-                    UserAttributes=[
-                        {
-                            'Name': 'phone_number_verified',
-                            'Value': 'true'
-                        }
-                    ]
-                )
-            
-            # Enable MFA for the user
             self.cognito_client.admin_set_user_mfa_preference(
                 UserPoolId=self.user_pool_id,
                 Username=username,
-                SMSMfaSettings={
-                    'Enabled': mfa_type == 'SMS_MFA',
-                    'PreferredMfa': mfa_type == 'SMS_MFA'
-                },
                 SoftwareTokenMfaSettings={
-                    'Enabled': mfa_type == 'SOFTWARE_TOKEN_MFA',
-                    'PreferredMfa': mfa_type == 'SOFTWARE_TOKEN_MFA'
+                    'Enabled': True,
+                    'PreferredMfa': True
                 }
             )
-            
-            logger.info(f"MFA ({mfa_type}) enabled for user {username}")
-            return {'success': True, 'mfa_type': mfa_type}
-            
+            logger.info(f"SOFTWARE_TOKEN_MFA enabled for user {username}")
+            return {'success': True}
         except ClientError as e:
             error_code = e.response['Error']['Code']
             error_message = e.response['Error']['Message']
-            logger.error(f"Failed to enable MFA: {error_code} - {error_message}")
-            return {
-                'success': False,
-                'error_code': error_code,
-                'error_message': error_message
-            }
+            logger.error(f"Failed to enable SOFTWARE_TOKEN_MFA: {error_code} - {error_message}")
+            return {'success': False, 'error_code': error_code, 'error_message': error_message}
 
     def associate_software_token(self, access_token=None, session=None):
         """
@@ -301,7 +270,7 @@ class CognitoHelper:
             response = self.cognito_client.associate_software_token(**params)
 
             secret_code = response['SecretCode']
-            session_token = response.get('Session', None)  # may be returned if session flow
+            session_token = response.get('Session', None)
             return {
                 'success': True,
                 'secret_code': secret_code,
