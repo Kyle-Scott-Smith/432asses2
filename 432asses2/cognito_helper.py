@@ -284,24 +284,31 @@ class CognitoHelper:
                 'error_message': error_message
             }
 
-    def associate_software_token(self, access_token):
-        """Associate a software token (TOTP) with user account"""
+    def associate_software_token(self, access_token=None, session=None):
+        """
+        Associate a software token (TOTP) with the user account.
+        Can use either an AccessToken (after login) or a Session (during MFA setup).
+        """
         try:
-            response = self.cognito_client.associate_software_token(
-                AccessToken=access_token
-            )
-            
+            params = {}
+            if access_token:
+                params['AccessToken'] = access_token
+            elif session:
+                params['Session'] = session
+            else:
+                raise ValueError("Must provide either access_token or session")
+
+            response = self.cognito_client.associate_software_token(**params)
+
             secret_code = response['SecretCode']
-            session_token = response['Session']
-            
-            logger.info("Software token associated successfully")
+            session_token = response.get('Session', None)  # may be returned if session flow
             return {
                 'success': True,
                 'secret_code': secret_code,
                 'session_token': session_token,
                 'qr_code_data': f'otpauth://totp/YourApp?secret={secret_code}&issuer=YourApp'
             }
-            
+
         except ClientError as e:
             error_code = e.response['Error']['Code']
             error_message = e.response['Error']['Message']
@@ -312,21 +319,25 @@ class CognitoHelper:
                 'error_message': error_message
             }
 
-    def verify_software_token(self, access_token, user_code, session_token):
-        """Verify software token setup with user-provided TOTP code"""
+    def verify_software_token(self, user_code, access_token=None, session=None):
+        """
+        Verify the software token (TOTP) using either AccessToken or Session.
+        """
         try:
-            response = self.cognito_client.verify_software_token(
-                AccessToken=access_token,
-                UserCode=user_code,
-                Session=session_token
-            )
-            
-            logger.info("Software token verified successfully")
+            params = {'UserCode': user_code}
+            if access_token:
+                params['AccessToken'] = access_token
+            elif session:
+                params['Session'] = session
+            else:
+                raise ValueError("Must provide either access_token or session")
+
+            response = self.cognito_client.verify_software_token(**params)
             return {
                 'success': True,
                 'status': response['Status']
             }
-            
+
         except ClientError as e:
             error_code = e.response['Error']['Code']
             error_message = e.response['Error']['Message']

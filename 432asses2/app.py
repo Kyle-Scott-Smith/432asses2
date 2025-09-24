@@ -415,7 +415,7 @@ def api_setup_totp():
     
     access_token = auth_header[7:]
     
-    result = cognito_helper.associate_software_token(access_token)
+    result = cognito_helper.associate_software_token(access_token=access_token)
     
     if result['success']:
         return jsonify({
@@ -447,7 +447,11 @@ def api_verify_totp_setup():
     if not user_code or not session_token:
         return jsonify({"msg": "Missing user code or session"}), 400
     
-    result = cognito_helper.verify_software_token(access_token, user_code, session_token)
+    result = cognito_helper.verify_software_token(
+        user_code=user_code,
+        access_token=access_token,
+        session=session_token
+    )
     
     if result['success']:
         return jsonify({
