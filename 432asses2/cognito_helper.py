@@ -30,9 +30,6 @@ class CognitoHelper:
             self.jwks = None
             self.jwks_last_fetch = None
             
-            # Initialize user groups
-            self._ensure_default_groups()
-            
             logger.info("Cognito helper initialized successfully")
             
         except Exception as e:
@@ -329,13 +326,13 @@ class CognitoHelper:
             )
             
             secret_code = response['SecretCode']
-            session = response['Session']
+            session_token = response['Session']
             
             logger.info("Software token associated successfully")
             return {
                 'success': True,
                 'secret_code': secret_code,
-                'session': session,
+                'session_token': session_token,
                 'qr_code_data': f'otpauth://totp/YourApp?secret={secret_code}&issuer=YourApp'
             }
             
@@ -349,13 +346,13 @@ class CognitoHelper:
                 'error_message': error_message
             }
 
-    def verify_software_token(self, access_token, user_code, session):
+    def verify_software_token(self, access_token, user_code, session_token):
         """Verify software token setup with user-provided TOTP code"""
         try:
             response = self.cognito_client.verify_software_token(
                 AccessToken=access_token,
                 UserCode=user_code,
-                Session=session
+                Session=session_token
             )
             
             logger.info("Software token verified successfully")

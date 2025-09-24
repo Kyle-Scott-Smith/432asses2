@@ -198,6 +198,7 @@ def web_login():
             
             # Use Cognito token directly (no Flask-JWT)
             session['token'] = result['id_token']
+            session['access_token'] = result['access_token']
             session['cognito_token'] = result['id_token']
             session['username'] = claims.get('cognito:username', username)
             session['user_groups'] = claims.get('cognito:groups', [])
@@ -420,7 +421,7 @@ def api_setup_totp():
             "message": "TOTP setup initiated",
             "secret_code": result['secret_code'],
             "qr_code_data": result['qr_code_data'],
-            "session": result['session']
+            "session_token": result['session_token']
         }), 200
     else:
         return jsonify({
@@ -440,7 +441,7 @@ def api_verify_totp_setup():
     
     access_token = auth_header[7:]
     user_code = request.json.get('user_code', None)
-    session_token = request.json.get('session', None)
+    session_token = request.json.get('session_token', None)
     
     if not user_code or not session_token:
         return jsonify({"msg": "Missing user code or session"}), 400

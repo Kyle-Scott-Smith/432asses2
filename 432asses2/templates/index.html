@@ -77,7 +77,6 @@
 <body>
     <div class="container">
         <h1>CAB432 API Testing Interface</h1>
-        <p><strong>Enhanced with MFA & User Groups</strong></p>
         
         {% if error %}
         <div class="error">{{ error }}</div>
@@ -168,8 +167,6 @@
             <div class="endpoint">
                 <h3>1. User Information & Groups</h3>
                 <button onclick="testEndpoint('/api/auth/userinfo', 'GET')">Get User Info</button>
-                <button onclick="testEndpoint('/api/users/groups', 'GET')">Get My Groups</button>
-                <button onclick="testEndpoint('/api/protected', 'GET')">Test Protected Endpoint</button>
                 <div class="result" id="result-userinfo"></div>
             </div>
 
@@ -205,21 +202,6 @@
                         <button type="button" onclick="addUserToGroup()">Add User to Group</button>
                         <button type="button" onclick="removeUserFromGroup()">Remove User from Group</button>
                     </form>
-                    <button onclick="testEndpoint('/api/admin/groups', 'GET')">List All Groups</button>
-                    <div class="result" id="result-admin-groups"></div>
-                </div>
-                
-                <div class="endpoint">
-                    <h4>MFA Management</h4>
-                    <form id="adminMFAForm">
-                        <input type="text" id="mfaUsername" placeholder="Username" required>
-                        <select id="mfaType">
-                            <option value="SMS_MFA">SMS MFA</option>
-                            <option value="SOFTWARE_TOKEN_MFA">TOTP MFA</option>
-                        </select>
-                        <button type="button" onclick="enableUserMFA()">Enable MFA for User</button>
-                    </form>
-                    <div class="result" id="result-admin-mfa"></div>
                 </div>
             </div>
             {% endif %}
@@ -242,7 +224,7 @@
             </div>
             
             <div class="endpoint">
-                <h3>4. Test Image Filtering (Group-based Limits)</h3>
+                <h3>4. Test Image Filtering</h3>
                 <form id="imageForm" enctype="multipart/form-data">
                     <input type="file" id="imageInput" name="image" accept="image/*" required>
                     <select id="filterSelect" name="filter">
@@ -286,7 +268,7 @@
             </div>
 
             <div class="endpoint">
-                <h3>5. Batch Image Filtering (Group-based Batch Limits)</h3>
+                <h3>5. Batch Image Filtering</h3>
                 <p><strong>Your batch limit:</strong> 
                 {% if 'Admins' in session.get('user_groups', []) %}
                 50 images
@@ -299,7 +281,7 @@
                 <form id="batchImageForm" enctype="multipart/form-data">
                     <div style="margin-bottom: 15px;">
                         <label for="batchImageInput" style="display: block; margin-bottom: 8px; font-weight: bold;">
-                            Select multiple images (hold Ctrl/Cmd to select multiple):
+                            Select multiple images:
                         </label>
                         <div style="position: relative; display: inline-block; width: 100%;">
                             <input type="file" id="batchImageInput" name="images" accept="image/*" multiple 
@@ -387,10 +369,10 @@
             
             resultDiv.innerHTML = 'Testing...';
             
-            const token = '{{ token }}';
+            const token = '{{ session.get("access_token") }}';
             const headers = {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${accessToken}`
             };
             
             const options = {
@@ -500,12 +482,12 @@
             const resultDiv = document.getElementById('result-mfa');
             resultDiv.innerHTML = 'Setting up TOTP...';
             
-            const token = '{{ token }}';
+            const accessToken = '{{ session.get("access_token") }}';
             
             fetch('/api/auth/setup-totp', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -516,7 +498,7 @@
                 } else {
                     resultDiv.innerHTML = 'TOTP setup initiated. Scan QR code below.';
                     document.getElementById('totpSetupSection').style.display = 'block';
-                    document.getElementById('totpSession').value = data.session;
+                    document.getElementById('totpSession').value = data.session_token;
                     
                     // Display QR code (you might want to use a QR code library here)
                     document.getElementById('totpQRCode').innerHTML = `
@@ -554,7 +536,7 @@
                 },
                 body: JSON.stringify({
                     user_code: code,
-                    session: session
+                    session_token: session
                 })
             })
             .then(response => response.json())
@@ -625,39 +607,6 @@
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-            })
-            .catch(error => {
-                resultDiv.innerHTML = `Error: ${error}`;
-            });
-        }
-
-        function enableUserMFA() {
-            const username = document.getElementById('mfaUsername').value;
-            const mfaType = document.getElementById('mfaType').value;
-            const resultDiv = document.getElementById('result-admin-mfa');
-            
-            if (!username) {
-                resultDiv.innerHTML = 'Please enter username';
-                return;
-            }
-            
-            resultDiv.innerHTML = 'Enabling MFA...';
-            
-            const token = '{{ token }}';
-            
-            fetch(`/api/admin/users/${username}/mfa`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    mfa_type: mfaType
-                })
             })
             .then(response => response.json())
             .then(data => {
