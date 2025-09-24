@@ -503,20 +503,30 @@
                     document.getElementById('totpSetupSection').style.display = 'block';
                     document.getElementById('totpSession').value = data.session_token;
                     
-                    // Display QR code (you might want to use a QR code library here)
-                    document.getElementById('totpQRCode').innerHTML = `
-                        <p><strong>Secret Code:</strong> ${data.secret_code}</p>
-                        <p><strong>Manual Entry URL:</strong></p>
-                        <code style="word-break: break-all;">${data.qr_code_data}</code>
-                        <p><em>Use this URL in your authenticator app if you can't scan QR codes</em></p>
-                    `;
+                    const qrDiv = document.getElementById('totpQRCode');
+                    qrDiv.innerHTML = '';
+
+                    // Generate QR code
+                    new QRCode(qrDiv, {
+                        text: data.qr_code_data, // this is the otpauth:// URL
+                        width: 200,
+                        height: 200
+                    });
+
+                    // Also show secret code as backup
+                    const secretPara = document.createElement('p');
+                    secretPara.innerHTML = `<strong>Secret Code:</strong> ${data.secret_code}`;
+                    qrDiv.appendChild(secretPara);
+
+                    const manualPara = document.createElement('p');
+                    manualPara.innerHTML = `<strong>Manual Entry URL:</strong> <br><code style="word-break: break-all;">${data.qr_code_data}</code>`;
+                    qrDiv.appendChild(manualPara);
                 }
             })
             .catch(error => {
                 resultDiv.innerHTML = `Error: ${error}`;
             });
         }
-
         function verifyTOTP() {
             const code = document.getElementById('totpVerifyCode').value;
             const session = document.getElementById('totpSession').value;
