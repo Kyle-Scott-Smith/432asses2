@@ -408,28 +408,29 @@ def api_mfa_verify():
 @app.route('/api/auth/setup-totp', methods=['POST'])
 @cognito_jwt_required
 def api_setup_totp():
-    """Setup TOTP (Time-based One-Time Password) for MFA"""
+    """Setup TOTP (Authenticator App) using user-level API only"""
     auth_header = request.headers.get('Authorization', '')
     if not auth_header.startswith('Bearer '):
         return jsonify({"msg": "Missing access token"}), 401
     
     access_token = auth_header[7:]
-    username = cognito_helper.get_user_info(access_token)
-    cognito_helper.enable_mfa_for_user(username)
+    
+    # Associate software token for the current user
     result = cognito_helper.associate_software_token(access_token=access_token)
     
     if result['success']:
-        session_token = result['session_token'] or access_token
+        # Return the secret code and QR code for the user to scan
         return jsonify({
             "message": "TOTP setup initiated",
             "secret_code": result['secret_code'],
             "qr_code_data": result['qr_code_data'],
-            "session_token": session_token
+            "session_token": result.get('session_token') or access_token
         }), 200
     else:
         return jsonify({
             "msg": f"TOTP setup failed: {result.get('error_message', 'Unknown error')}"
         }), 400
+
 
 @app.route('/api/auth/verify-totp-setup', methods=['POST'])
 @cognito_jwt_required
